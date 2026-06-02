@@ -55,6 +55,8 @@ print(f"\nAverage Growth Rate: {avg_growth:.2%}")
 # Forecast assumptions
 # -----------------------------
 
+cursor.execute("DELETE FROM forecasts")
+
 SCENARIOS = {
     "Conservative": 0.05,
     "Expected": 0.10,
@@ -90,6 +92,14 @@ for scenario, growth in SCENARIOS.items():
 
         current_revenue *= (1 + growth)
 
+        cursor.execute("""
+        INSERT INTO forecasts
+        (month, scenario, revenue)
+        VALUES (?, ?, ?)
+        """,
+                       (month, scenario, current_revenue)
+                       )
+
         print(
             f"{month}: ${current_revenue:,.2f}"
         )
@@ -98,4 +108,5 @@ for scenario, growth in SCENARIOS.items():
 # Close connection
 # -----------------------------
 
+conn.commit()
 conn.close()

@@ -16,6 +16,14 @@ CREATE TABLE IF NOT EXISTS monthly_financials (
 )
 """)
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS forecasts (
+    month TEXT,
+    scenario TEXT,
+    revenue REAL
+)
+""")
+
 conn.commit()
 conn.close()
 
