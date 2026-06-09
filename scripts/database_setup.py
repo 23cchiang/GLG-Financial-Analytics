@@ -5,14 +5,16 @@ cursor = conn.cursor()
 
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS monthly_financials (
-    month TEXT,
+    month TEXT PRIMARY KEY,
     revenue REAL,
     payroll REAL,
     supplies REAL,
     rent REAL,
     software REAL,
     marketing REAL,
-    profit REAL
+    profit REAL,
+    source_file TEXT,
+    date_imported TEXT
 )
 """)
 

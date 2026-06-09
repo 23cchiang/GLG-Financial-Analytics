@@ -1,36 +1,56 @@
 import streamlit as st
-import sqlite3
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import sqlite3
+import os
+from scripts.import_functions import import_quickbooks
 
 # --------------------------------------------------
-# Page Setup
+# PAGE CONFIG
 # --------------------------------------------------
 
 st.set_page_config(
-    page_title="GLG Financial Analytics",
+    page_title="GLG Financial Analytics Dashboard",
     layout="wide"
 )
 
 st.title("GLG Financial Analytics Dashboard")
 
 # --------------------------------------------------
-# Scenario Selector
+# QUICKBOOKS UPLOAD
 # --------------------------------------------------
 
-scenario = st.selectbox(
-    "Forecast Scenario",
-    ["Conservative", "Expected", "Aggressive"]
+st.header("Upload QuickBooks Report")
+
+uploaded_file = st.file_uploader(
+    "Choose a QuickBooks Profit & Loss Export",
+    type=["xlsx"]
 )
 
+if uploaded_file is not None:
+
+    save_path = os.path.join(
+        "imports",
+        uploaded_file.name
+    )
+
+    with open(save_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    if st.button("Import QuickBooks Data"):
+
+        import_quickbooks(save_path)
+
+        st.success("QuickBooks Import Complete!")
+
+        st.rerun()
+
 # --------------------------------------------------
-# Load Database Data
+# DATABASE CONNECTION
 # --------------------------------------------------
 
 conn = sqlite3.connect("database.db")
 
-actual_df = pd.read_sql_query(
+df = pd.read_sql_query(
     """
     SELECT *
     FROM monthly_financials
@@ -39,180 +59,205 @@ actual_df = pd.read_sql_query(
     conn
 )
 
-forecast_df = pd.read_sql_query(
-    """
-    SELECT *
-    FROM forecasts
-    ORDER BY month
-    """,
-    conn
-)
-
-conn.close()
-
-selected_forecast = forecast_df[
-    forecast_df["scenario"] == scenario
-]
-
 # --------------------------------------------------
-# Latest KPIs
+# CHECK DATA EXISTS
 # --------------------------------------------------
 
-latest = actual_df.iloc[-1]
+if len(df) == 0:
+
+    st.warning("No financial data found.")
+
+    conn.close()
+
+    st.stop()
+
+# --------------------------------------------------
+# LATEST MONTH
+# --------------------------------------------------
+
+latest = df.iloc[-1]
 
 revenue = latest["revenue"]
-payroll = latest["payroll"]
-supplies = latest["supplies"]
-rent = latest["rent"]
-software = latest["software"]
-marketing = latest["marketing"]
 profit = latest["profit"]
 
-net_margin = profit / revenue * 100
-payroll_pct = payroll / revenue * 100
-supplies_pct = supplies / revenue * 100
+net_margin = (
+    profit / revenue * 100
+    if revenue != 0
+    else 0
+)
+
+payroll_pct = (
+    latest["payroll"] / revenue * 100
+    if revenue != 0
+    else 0
+)
+
+supplies_pct = (
+    latest["supplies"] / revenue * 100
+    if revenue != 0
+    else 0
+)
 
 # --------------------------------------------------
-# KPI Cards
+# KPI CARDS
 # --------------------------------------------------
+
+st.header("Key Performance Indicators")
 
 col1, col2, col3, col4 = st.columns(4)
 
-with col1:
-    st.metric(
-        "Revenue",
-        f"${revenue:,.0f}"
-    )
+col1.metric(
+    "Revenue",
+    f"${revenue:,.0f}"
+)
 
-with col2:
-    st.metric(
-        "Net Margin",
-        f"{net_margin:.2f}%"
-    )
+col2.metric(
+    "Net Margin",
+    f"{net_margin:.2f}%"
+)
 
-with col3:
-    st.metric(
-        "Payroll %",
-        f"{payroll_pct:.2f}%"
-    )
+col3.metric(
+    "Payroll %",
+    f"{payroll_pct:.2f}%"
+)
 
-with col4:
-    st.metric(
-        "Supplies %",
-        f"{supplies_pct:.2f}%"
-    )
+col4.metric(
+    "Supplies %",
+    f"{supplies_pct:.2f}%"
+)
+
+# --------------------------------------------------
+# REVENUE TREND
+# --------------------------------------------------
 
 st.divider()
 
+st.header("Revenue Trend")
+
+revenue_chart = df[["month", "revenue"]].copy()
+
+revenue_chart = revenue_chart.set_index("month")
+
+st.line_chart(revenue_chart)
+
 # --------------------------------------------------
-# Revenue Trend
+# EXPENSE BREAKDOWN
 # --------------------------------------------------
 
-st.subheader("Revenue Trend")
+st.divider()
+
+st.header("Expense Breakdown")
+
+expense_data = pd.DataFrame(
+    {
+        "Category": [
+            "Payroll",
+            "Supplies",
+            "Rent",
+            "Software",
+            "Marketing"
+        ],
+        "Amount": [
+            latest["payroll"],
+            latest["supplies"],
+            latest["rent"],
+            latest["software"],
+            latest["marketing"]
+        ]
+    }
+)
+
+st.bar_chart(
+    expense_data.set_index("Category")
+)
+
+# --------------------------------------------------
+# SIMPLE FORECAST
+# --------------------------------------------------
+
+st.divider()
+
+st.header("Revenue Forecast")
+
+growth_rates = []
+
+revenues = df["revenue"].tolist()
+
+for i in range(1, len(revenues)):
+
+    growth = (
+        revenues[i] - revenues[i - 1]
+    ) / revenues[i - 1]
+
+    growth_rates.append(growth)
+
+avg_growth = (
+    sum(growth_rates)
+    / len(growth_rates)
+)
+
+future_revenue = revenues[-1]
+
+forecast_months = []
+forecast_values = []
+
+for i in range(6):
+
+    future_revenue *= (1 + avg_growth)
+
+    forecast_months.append(
+        f"Forecast {i+1}"
+    )
+
+    forecast_values.append(
+        round(future_revenue, 2)
+    )
+
+forecast_df = pd.DataFrame(
+    {
+        "Month": forecast_months,
+        "Revenue": forecast_values
+    }
+)
 
 st.line_chart(
-    actual_df.set_index("month")["revenue"]
+    forecast_df.set_index("Month")
 )
+
+st.metric(
+    "Projected Revenue (6 Months)",
+    f"${forecast_values[-1]:,.0f}"
+)
+
+# --------------------------------------------------
+# IMPORT INFO
+# --------------------------------------------------
 
 st.divider()
 
-# --------------------------------------------------
-# Expense Composition
-# --------------------------------------------------
+st.header("Import Information")
 
-st.subheader("Expense Composition")
-
-expense_df = pd.DataFrame({
-    "Category": [
-        "Payroll",
-        "Supplies",
-        "Rent",
-        "Software",
-        "Marketing"
-    ],
-    "Amount": [
-        payroll,
-        supplies,
-        rent,
-        software,
-        marketing
-    ]
-})
-
-expense_fig = px.pie(
-    expense_df,
-    values="Amount",
-    names="Category",
-    hole=0.4,
-    title=f"Expense Breakdown ({latest['month']})"
+st.write(
+    f"Last Source File: "
+    f"{latest['source_file']}"
 )
 
-st.plotly_chart(
-    expense_fig,
-    use_container_width=True
-)
-
-st.divider()
-
-# --------------------------------------------------
-# Actual vs Forecast Revenue
-# --------------------------------------------------
-
-st.subheader("Actual vs Forecast Revenue")
-
-forecast_fig = go.Figure()
-
-forecast_fig.add_trace(
-    go.Scatter(
-        x=actual_df["month"],
-        y=actual_df["revenue"],
-        mode="lines+markers",
-        name="Actual Revenue"
-    )
-)
-
-forecast_fig.add_trace(
-    go.Scatter(
-        x=selected_forecast["month"],
-        y=selected_forecast["revenue"],
-        mode="lines+markers",
-        name=f"{scenario} Forecast"
-    )
-)
-
-forecast_fig.update_layout(
-    title=f"{scenario} Revenue Forecast",
-    xaxis_title="Month",
-    yaxis_title="Revenue ($)",
-    height=500
-)
-
-st.plotly_chart(
-    forecast_fig,
-    use_container_width=True
+st.write(
+    f"Last Import Date: "
+    f"{latest['date_imported']}"
 )
 
 # --------------------------------------------------
-# Forecast Summary
+# HISTORICAL DATA
 # --------------------------------------------------
 
-if not selected_forecast.empty:
-
-    december_forecast = selected_forecast.iloc[-1]["revenue"]
-
-    st.subheader("Forecast Summary")
-
-    st.metric(
-        "Projected December Revenue",
-        f"${december_forecast:,.0f}"
-    )
+with st.expander(
+    "View Historical Financial Data"
+):
+    st.dataframe(df)
 
 # --------------------------------------------------
-# Raw Data
+# CLOSE CONNECTION
 # --------------------------------------------------
 
-with st.expander("View Historical Financial Data"):
-    st.dataframe(actual_df)
-
-with st.expander("View Forecast Data"):
-    st.dataframe(selected_forecast)
+conn.close()
