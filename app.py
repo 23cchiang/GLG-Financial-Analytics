@@ -82,7 +82,6 @@ if uploaded_file is not None:
 # --------------------------------------------------
 # PASSWORD PROTECTION
 # --------------------------------------------------
-from config import DASHBOARD_PASSWORD
 
 password = st.text_input(
     "Enter Dashboard Password",
