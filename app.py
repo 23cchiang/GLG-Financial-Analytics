@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import os
+
 from scripts.import_functions import import_quickbooks
+from sklearn.linear_model import LinearRegression
 
 # --------------------------------------------------
 # PAGE CONFIG
@@ -28,6 +30,8 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
+    os.makedirs("imports", exist_ok=True)
+
     save_path = os.path.join(
         "imports",
         uploaded_file.name
@@ -45,7 +49,7 @@ if uploaded_file is not None:
         st.rerun()
 
 # --------------------------------------------------
-# DATABASE CONNECTION
+# DATABASE
 # --------------------------------------------------
 
 conn = sqlite3.connect("database.db")
@@ -59,20 +63,20 @@ df = pd.read_sql_query(
     conn
 )
 
+conn.close()
+
 # --------------------------------------------------
-# CHECK DATA EXISTS
+# CHECK FOR DATA
 # --------------------------------------------------
 
 if len(df) == 0:
 
     st.warning("No financial data found.")
 
-    conn.close()
-
     st.stop()
 
 # --------------------------------------------------
-# LATEST MONTH
+# LATEST MONTH KPIs
 # --------------------------------------------------
 
 latest = df.iloc[-1]
@@ -99,7 +103,7 @@ supplies_pct = (
 )
 
 # --------------------------------------------------
-# KPI CARDS
+# KPI DASHBOARD
 # --------------------------------------------------
 
 st.header("Key Performance Indicators")
@@ -127,7 +131,7 @@ col4.metric(
 )
 
 # --------------------------------------------------
-# REVENUE TREND
+# HISTORICAL REVENUE
 # --------------------------------------------------
 
 st.divider()
@@ -148,40 +152,34 @@ st.divider()
 
 st.header("Expense Breakdown")
 
-expense_data = pd.DataFrame(
-    {
-        "Category": [
-            "Payroll",
-            "Supplies",
-            "Rent",
-            "Software",
-            "Marketing"
-        ],
-        "Amount": [
-            latest["payroll"],
-            latest["supplies"],
-            latest["rent"],
-            latest["software"],
-            latest["marketing"]
-        ]
-    }
-)
+expense_df = pd.DataFrame({
+    "Category": [
+        "Payroll",
+        "Supplies",
+        "Rent",
+        "Software",
+        "Marketing"
+    ],
+    "Amount": [
+        latest["payroll"],
+        latest["supplies"],
+        latest["rent"],
+        latest["software"],
+        latest["marketing"]
+    ]
+})
 
 st.bar_chart(
-    expense_data.set_index("Category")
+    expense_df.set_index("Category")
 )
 
 # --------------------------------------------------
-# SIMPLE FORECAST
+# GROWTH FORECAST
 # --------------------------------------------------
 
-st.divider()
-
-st.header("Revenue Forecast")
+revenues = df["revenue"].tolist()
 
 growth_rates = []
-
-revenues = df["revenue"].tolist()
 
 for i in range(1, len(revenues)):
 
@@ -191,46 +189,124 @@ for i in range(1, len(revenues)):
 
     growth_rates.append(growth)
 
-avg_growth = (
-    sum(growth_rates)
-    / len(growth_rates)
-)
+avg_growth = sum(growth_rates) / len(growth_rates)
+
+growth_forecast = []
 
 future_revenue = revenues[-1]
-
-forecast_months = []
-forecast_values = []
 
 for i in range(6):
 
     future_revenue *= (1 + avg_growth)
 
-    forecast_months.append(
-        f"Forecast {i+1}"
-    )
-
-    forecast_values.append(
+    growth_forecast.append(
         round(future_revenue, 2)
     )
 
-forecast_df = pd.DataFrame(
-    {
-        "Month": forecast_months,
-        "Revenue": forecast_values
-    }
+# --------------------------------------------------
+# REGRESSION FORECAST
+# --------------------------------------------------
+
+reg_df = df.copy()
+
+reg_df["month_num"] = range(len(reg_df))
+
+X = reg_df[["month_num"]]
+
+y = reg_df["revenue"]
+
+model = LinearRegression()
+
+model.fit(X, y)
+
+future_X = pd.DataFrame({
+    "month_num": range(
+        len(reg_df),
+        len(reg_df) + 6
+    )
+})
+
+regression_forecast = model.predict(
+    future_X
 )
 
-st.line_chart(
-    forecast_df.set_index("Month")
+regression_forecast = [
+    round(x, 2)
+    for x in regression_forecast
+]
+
+# --------------------------------------------------
+# FORECAST COMPARISON
+# --------------------------------------------------
+
+st.divider()
+
+st.header("Forecast Comparison")
+
+col1, col2 = st.columns(2)
+
+col1.metric(
+    "Growth Model",
+    f"${growth_forecast[-1]:,.0f}"
 )
 
-st.metric(
-    "Projected Revenue (6 Months)",
-    f"${forecast_values[-1]:,.0f}"
+col2.metric(
+    "Regression Model",
+    f"${regression_forecast[-1]:,.0f}"
 )
 
 # --------------------------------------------------
-# IMPORT INFO
+# COMBINED FORECAST CHART
+# --------------------------------------------------
+
+historical = df["revenue"].tolist()
+
+chart_df = pd.DataFrame({
+    "Historical Revenue":
+        historical + [None] * 6,
+
+    "Growth Forecast":
+        [None] * len(historical)
+        + growth_forecast,
+
+    "Regression Forecast":
+        [None] * len(historical)
+        + regression_forecast
+})
+
+st.subheader(
+    "Historical vs Forecasted Revenue"
+)
+
+st.line_chart(chart_df)
+
+# --------------------------------------------------
+# FORECAST TABLE
+# --------------------------------------------------
+
+forecast_table = pd.DataFrame({
+    "Month Ahead": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+    ],
+    "Growth Forecast":
+        growth_forecast,
+
+    "Regression Forecast":
+        regression_forecast
+})
+
+st.dataframe(
+    forecast_table,
+    use_container_width=True
+)
+
+# --------------------------------------------------
+# IMPORT INFORMATION
 # --------------------------------------------------
 
 st.divider()
@@ -238,13 +314,11 @@ st.divider()
 st.header("Import Information")
 
 st.write(
-    f"Last Source File: "
-    f"{latest['source_file']}"
+    f"Source File: {latest['source_file']}"
 )
 
 st.write(
-    f"Last Import Date: "
-    f"{latest['date_imported']}"
+    f"Date Imported: {latest['date_imported']}"
 )
 
 # --------------------------------------------------
@@ -254,10 +328,8 @@ st.write(
 with st.expander(
     "View Historical Financial Data"
 ):
-    st.dataframe(df)
 
-# --------------------------------------------------
-# CLOSE CONNECTION
-# --------------------------------------------------
-
-conn.close()
+    st.dataframe(
+        df,
+        use_container_width=True
+    )

@@ -1,35 +1,74 @@
 import pandas as pd
 import sqlite3
-from datetime import date
+from pathlib import Path
+from datetime import datetime, date
 
 
 def import_quickbooks(file_path):
 
-    print(f"Importing: {file_path}")
+    print(f"\nImporting: {file_path}")
+
+    # ----------------------------
+    # Read QuickBooks Export
+    # ----------------------------
 
     df = pd.read_excel(
         file_path,
         header=3
     )
 
-    months = df.iloc[0, 1:6].tolist()
+    # ----------------------------
+    # Get Month Headers
+    # ----------------------------
 
-    months_clean = [
-        "2026-01",
-        "2026-02",
-        "2026-03",
-        "2026-04",
-        "2026-05"
-    ]
+    raw_months = df.iloc[0, 1:].tolist()
+
+    months_clean = []
+    valid_column_indexes = []
+
+    for idx, month in enumerate(raw_months):
+
+        try:
+
+            cleaned = datetime.strptime(
+                str(month),
+                "%b %Y"
+            ).strftime("%Y-%m")
+
+            months_clean.append(cleaned)
+
+            valid_column_indexes.append(idx + 1)
+
+        except ValueError:
+
+            print(f"Skipping partial month: {month}")
+
+    print("\nMonths Found:")
+    print(months_clean)
+
+    # ----------------------------
+    # Helper Function
+    # ----------------------------
 
     def get_row(label):
 
         row = df[df.iloc[:, 0] == label]
 
         if len(row) == 0:
+            print(f"Could not find: {label}")
             return None
 
-        return row.iloc[0, 1:6].tolist()
+        values = []
+
+        for col_idx in valid_column_indexes:
+
+            values.append(row.iloc[0, col_idx])
+
+        return values
+
+    # ----------------------------
+    # Extract Categories
+    # ----------------------------
 
     revenue = get_row("Total for Income")
     payroll = get_row("Total for Payroll expenses")
@@ -42,9 +81,13 @@ def import_quickbooks(file_path):
     computer_software = get_row("Computer Software")
     software_apps = get_row("Software & apps")
 
+    # ----------------------------
+    # Combine Software Categories
+    # ----------------------------
+
     software = []
 
-    for i in range(len(months)):
+    for i in range(len(months_clean)):
 
         total = 0
 
@@ -59,9 +102,21 @@ def import_quickbooks(file_path):
 
         software.append(round(total, 2))
 
-    conn = sqlite3.connect("../database.db")
+    # ----------------------------
+    # Database Connection
+    # ----------------------------
+
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+    db_path = BASE_DIR / "database.db"
+
+    conn = sqlite3.connect(db_path)
 
     cursor = conn.cursor()
+
+    # ----------------------------
+    # Insert Data
+    # ----------------------------
 
     for i in range(len(months_clean)):
 
@@ -90,11 +145,13 @@ def import_quickbooks(file_path):
             round(float(software[i]), 2),
             round(float(marketing[i]), 2),
             round(float(profit[i]), 2),
-            file_path.split("/")[-1],
+            Path(file_path).name,
             str(date.today())
         ))
 
     conn.commit()
     conn.close()
+
+    print("\nQuickBooks import complete!")
 
     return True
