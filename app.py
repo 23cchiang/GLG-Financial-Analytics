@@ -6,6 +6,36 @@ import os
 from scripts.import_functions import import_quickbooks
 from sklearn.linear_model import LinearRegression
 
+# Create database if it doesn't exist
+
+conn = sqlite3.connect("database.db")
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS monthly_financials (
+    month TEXT PRIMARY KEY,
+    revenue REAL,
+    payroll REAL,
+    supplies REAL,
+    rent REAL,
+    software REAL,
+    marketing REAL,
+    profit REAL,
+    source_file TEXT,
+    date_imported TEXT
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS forecasts (
+    month TEXT,
+    scenario TEXT,
+    revenue REAL
+)
+""")
+
+conn.commit()
+conn.close()
 # --------------------------------------------------
 # PAGE CONFIG
 # --------------------------------------------------
