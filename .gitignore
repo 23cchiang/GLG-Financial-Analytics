@@ -12,8 +12,18 @@ venv/
 # Secrets
 **/config.py
 
-# Database backups
-*.db-journal
+# Database
+database.db
+
+# Imported reports
+imports/
+
+# Python cache
+__pycache__/
+*.pyc
 
 # IDE files
 .idea/
+
+# Database backups
+*.db-journal
