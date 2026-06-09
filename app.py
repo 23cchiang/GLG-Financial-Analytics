@@ -48,6 +48,30 @@ if uploaded_file is not None:
 
         st.rerun()
 
+
+# --------------------------------------------------
+# PASSWORD PROTECTION
+# --------------------------------------------------
+from config import DASHBOARD_PASSWORD
+
+PASSWORD = DASHBOARD_PASSWORD
+
+password = st.text_input(
+    "Enter Dashboard Password",
+    type="password"
+)
+
+if password == "":
+    st.stop()
+
+if password != PASSWORD:
+
+    st.error(
+        "Incorrect password."
+    )
+
+    st.stop()
+
 # --------------------------------------------------
 # DATABASE
 # --------------------------------------------------

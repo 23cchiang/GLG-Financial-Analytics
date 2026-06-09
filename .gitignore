@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environments
+.venv/
+venv/
+
+# Mac
+.DS_Store
+
+# Secrets
+config.py
+
+# Database backups
+*.db-journal
+
+# IDE files
+.idea/
