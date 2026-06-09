@@ -10,7 +10,7 @@ venv/
 .DS_Store
 
 # Secrets
-config.py
+**/config.py
 
 # Database backups
 *.db-journal
