@@ -84,8 +84,6 @@ if uploaded_file is not None:
 # --------------------------------------------------
 from config import DASHBOARD_PASSWORD
 
-PASSWORD = DASHBOARD_PASSWORD
-
 password = st.text_input(
     "Enter Dashboard Password",
     type="password"
@@ -94,12 +92,8 @@ password = st.text_input(
 if password == "":
     st.stop()
 
-if password != PASSWORD:
-
-    st.error(
-        "Incorrect password."
-    )
-
+if password != st.secrets["dashboard_password"]:
+    st.error("Incorrect password.")
     st.stop()
 
 # --------------------------------------------------
