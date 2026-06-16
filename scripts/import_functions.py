@@ -3,6 +3,8 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, date
 
+from scripts.supabase_client import supabase
+
 
 def import_quickbooks(file_path):
 
@@ -148,6 +150,19 @@ def import_quickbooks(file_path):
             Path(file_path).name,
             str(date.today())
         ))
+
+        supabase.table("monthly_financials").upsert({
+            "month": months_clean[i],
+            "revenue": round(float(revenue[i]), 2),
+            "payroll": round(float(payroll[i]), 2),
+            "supplies": round(float(supplies[i]), 2),
+            "rent": 0 if pd.isna(rent[i]) else round(float(rent[i]), 2),
+            "software": round(float(software[i]), 2),
+            "marketing": round(float(marketing[i]), 2),
+            "profit": round(float(profit[i]), 2),
+            "source_file": Path(file_path).name,
+            "date_imported": str(date.today())
+        }).execute()
 
     conn.commit()
     conn.close()
