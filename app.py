@@ -209,7 +209,6 @@ with col4:
 
 st.divider()
 
-st.header("Revenue Trend")
 
 comparison = pd.DataFrame({
     "Category": [
@@ -299,6 +298,24 @@ under_budget = abs(
     ]["Variance"].sum()
 )
 
+st.subheader("Recommendations")
+
+for _, row in comparison.iterrows():
+
+    if row["Variance"] > 0:
+
+        st.warning(
+            f"{row['Category']} exceeds budget by "
+            f"${row['Variance']:,.2f}"
+        )
+
+    elif row["Variance"] < 0:
+
+        st.success(
+            f"{row['Category']} is under budget by "
+            f"${abs(row['Variance']):,.2f}"
+        )
+
 col1, col2 = st.columns(2)
 
 with col1:
@@ -345,7 +362,7 @@ supplies_pct = (
 # KPI DASHBOARD
 # --------------------------------------------------
 
-st.header("Key Performance Indicators")
+st.header("Operational KPIs")
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -421,7 +438,13 @@ fig = px.bar(
     expense_df,
     x="Category",
     y="Amount",
-    color_discrete_sequence=["#800080"]
+    color_discrete_sequence=["#800080"],
+    text="Amount"
+)
+
+fig.update_traces(
+    texttemplate="$%{y:,.0f}",
+    textposition="outside"
 )
 
 st.plotly_chart(
@@ -584,8 +607,21 @@ forecast_table = pd.DataFrame({
         regression_forecast
 })
 
+forecast_display = forecast_table.copy()
+
+forecast_display["Growth Forecast"] = (
+    forecast_display["Growth Forecast"]
+    .map(lambda x: f"${x:,.0f}")
+)
+
+forecast_display["Regression Forecast"] = (
+    forecast_display["Regression Forecast"]
+    .map(lambda x: f"${x:,.0f}")
+)
+
+
 st.dataframe(
-    forecast_table,
+    forecast_display,
     use_container_width=True
 )
 
@@ -612,8 +648,24 @@ st.write(
 with st.expander(
     "View Historical Financial Data"
 ):
+    display_df = df.copy()
+
+    money_columns = [
+        "revenue",
+        "payroll",
+        "supplies",
+        "rent",
+        "software",
+        "marketing",
+        "profit"
+    ]
+
+    for col in money_columns:
+        display_df[col] = display_df[col].map(
+            lambda x: f"${x:,.2f}"
+        )
 
     st.dataframe(
-        df,
+        display_df,
         use_container_width=True
     )
