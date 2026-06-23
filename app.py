@@ -414,8 +414,26 @@ budget_health = max(
 
 st.subheader("Budget Health Score")
 
-st.progress(
-    budget_health / 100
+
+st.markdown(
+    f"""
+    <div style="
+        width:100%;
+        background-color:#e0e0e0;
+        border-radius:10px;
+        height:25px;
+        margin-bottom:10px;
+    ">
+        <div style="
+            width:{budget_health}%;
+            background-color:#800080;
+            height:25px;
+            border-radius:10px;
+        ">
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
 st.markdown(
