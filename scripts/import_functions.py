@@ -164,6 +164,19 @@ def import_quickbooks(file_path):
             "date_imported": str(date.today())
         }).execute()
 
+    try:
+        response = supabase.table("monthly_financials").upsert({
+            ...
+        }).execute()
+
+        print(response)
+
+    except Exception as e:
+        print("SUPABASE ERROR:")
+        print(e)
+        raise
+
+
     conn.commit()
     conn.close()
 
