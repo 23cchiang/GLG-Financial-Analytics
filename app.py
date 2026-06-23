@@ -400,6 +400,17 @@ if st.button("💾 Save Budget Changes"):
 # --------------------------------------------------
 # BUDGET HEALTH SCORE
 # --------------------------------------------------
+total_budget = comparison["Budget"].sum()
+
+total_actual = comparison["Actual"].sum()
+
+budget_health = max(
+    0,
+    100 - abs(
+        (total_actual - total_budget)
+        / total_budget * 100
+    )
+)
 
 st.subheader("Budget Health Score")
 
