@@ -6,6 +6,7 @@ import os
 from scripts.import_functions import import_quickbooks
 from sklearn.linear_model import LinearRegression
 from scripts.supabase_client import supabase
+GLG_PURPLE = "#800080"
 
 # Create database if it doesn't exist
 
@@ -213,11 +214,10 @@ styled_comparison = (
         "Variance %": "{:.1f}%"
     })
     .map(
-        lambda v: (
-            "color: red; font-weight: bold"
-            if v > 0
-            else "color: green; font-weight: bold"
-        ),
+        lambda v:
+        "color: red; font-weight: bold"
+        if v > 0
+        else "color: #800080; font-weight: bold",
         subset=["Variance"]
     )
 )
@@ -480,9 +480,9 @@ fig.update_traces(
     line=dict(width=4)
 )
 
-fig.data[0].line.color = "#800080"   # Historical Revenue
-fig.data[1].line.color = "#9146FF"   # Growth Forecast
-fig.data[2].line.color = "7851A9"   # Regression Forecast
+fig.data[0].line.color = GLG_PURPLE
+fig.data[1].line.color = GLG_PURPLE
+fig.data[2].line.color = GLG_PURPLE
 
 fig.update_layout(
     plot_bgcolor="white",
