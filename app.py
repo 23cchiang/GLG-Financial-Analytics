@@ -44,6 +44,14 @@ CREATE TABLE IF NOT EXISTS forecasts (
 )
 """)
 
+st.markdown("""
+<style>
+h1, h2, h3 {
+    color: #800080;
+}
+</style>
+""", unsafe_allow_html=True)
+
 conn.commit()
 conn.close()
 # --------------------------------------------------
