@@ -160,6 +160,57 @@ budget_df = pd.DataFrame(
 
 latest = df.iloc[-1]
 
+# --------------------------------------------------
+# EXECUTIVE KPI DASHBOARD
+# --------------------------------------------------
+
+revenue = float(latest["revenue"])
+
+expenses = (
+    float(latest["payroll"]) +
+    float(latest["supplies"]) +
+    float(latest["rent"]) +
+    float(latest["software"]) +
+    float(latest["marketing"])
+)
+
+profit = float(latest["profit"])
+
+profit_margin = (
+    (profit / revenue) * 100
+    if revenue > 0 else 0
+)
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(
+        "Revenue",
+        f"${revenue:,.2f}"
+    )
+
+with col2:
+    st.metric(
+        "Expenses",
+        f"${expenses:,.2f}"
+    )
+
+with col3:
+    st.metric(
+        "Profit",
+        f"${profit:,.2f}"
+    )
+
+with col4:
+    st.metric(
+        "Profit Margin",
+        f"{profit_margin:.2f}%"
+    )
+
+st.divider()
+
+st.header("Revenue Trend")
+
 comparison = pd.DataFrame({
     "Category": [
         "Payroll",
