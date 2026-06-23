@@ -3,6 +3,7 @@ import pandas as pd
 import sqlite3
 import os
 import plotly.express as px
+import plotly.express as px
 
 from scripts.import_functions import import_quickbooks
 from sklearn.linear_model import LinearRegression
@@ -358,7 +359,7 @@ expense_df = pd.DataFrame({
 })
 
 fig = px.bar(
-    your_dataframe,
+    expense_df,
     x="Category",
     y="Amount",
     color_discrete_sequence=["#800080"]
