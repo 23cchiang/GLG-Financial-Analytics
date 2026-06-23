@@ -12,7 +12,7 @@ from scripts.supabase_client import supabase
 st.markdown("""
 <style>
 [data-testid="stMetricValue"] {
-    color: #2596be;
+    color: #800080;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -352,7 +352,7 @@ fig = px.bar(
     your_dataframe,
     x="Category",
     y="Amount",
-    color_discrete_sequence=["#2596be"]
+    color_discrete_sequence=["#800080"]
 )
 
 st.plotly_chart(
@@ -480,9 +480,9 @@ fig.update_traces(
     line=dict(width=4)
 )
 
-fig.data[0].line.color = "#2596be"   # Historical Revenue
-fig.data[1].line.color = "#7b2cbf"   # Growth Forecast
-fig.data[2].line.color = "#c77dff"   # Regression Forecast
+fig.data[0].line.color = "#800080"   # Historical Revenue
+fig.data[1].line.color = "#9146FF"   # Growth Forecast
+fig.data[2].line.color = "7851A9"   # Regression Forecast
 
 fig.update_layout(
     plot_bgcolor="white",
