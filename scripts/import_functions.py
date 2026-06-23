@@ -1,5 +1,7 @@
 import pandas as pd
 import sqlite3
+import json
+
 from pathlib import Path
 from datetime import datetime, date
 
@@ -122,67 +124,61 @@ def import_quickbooks(file_path):
 
     for i in range(len(months_clean)):
 
-        cursor.execute("""
-        INSERT OR REPLACE INTO monthly_financials
-        (
-            month,
-            revenue,
-            payroll,
-            supplies,
-            rent,
-            software,
-            marketing,
-            profit,
-            source_file,
-            date_imported
+        # SQLite Insert
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO monthly_financials
+            (
+                month,
+                revenue,
+                payroll,
+                supplies,
+                rent,
+                software,
+                marketing,
+                profit,
+                source_file,
+                date_imported
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(months_clean[i]),
+                round(float(revenue[i]), 2),
+                round(float(payroll[i]), 2),
+                round(float(supplies[i]), 2),
+                0 if pd.isna(rent[i]) else round(float(rent[i]), 2),
+                round(float(software[i]), 2),
+                round(float(marketing[i]), 2),
+                round(float(profit[i]), 2),
+                str(Path(file_path).name),
+                str(date.today())
+            )
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            months_clean[i],
-            round(float(revenue[i]), 2),
-            round(float(payroll[i]), 2),
-            round(float(supplies[i]), 2),
-            0 if pd.isna(rent[i]) else round(float(rent[i]), 2),
-            round(float(software[i]), 2),
-            round(float(marketing[i]), 2),
-            round(float(profit[i]), 2),
-            Path(file_path).name,
-            str(date.today())
-        ))
 
+        # Supabase Insert
         data = {
             "month": str(months_clean[i]),
-            "revenue": float(round(revenue[i], 2)),
-            "payroll": float(round(payroll[i], 2)),
-            "supplies": float(round(supplies[i], 2)),
-            "rent": 0.0 if pd.isna(rent[i]) else float(round(rent[i], 2)),
-            "software": float(round(software[i], 2)),
-            "marketing": float(round(marketing[i], 2)),
-            "profit": float(round(profit[i], 2)),
+            "revenue": float(round(float(revenue[i]), 2)),
+            "payroll": float(round(float(payroll[i]), 2)),
+            "supplies": float(round(float(supplies[i]), 2)),
+            "rent": 0.0 if pd.isna(rent[i]) else float(round(float(rent[i]), 2)),
+            "software": float(round(float(software[i]), 2)),
+            "marketing": float(round(float(marketing[i]), 2)),
+            "profit": float(round(float(profit[i]), 2)),
             "source_file": str(Path(file_path).name),
             "date_imported": str(date.today())
         }
 
-        print("Sending to Supabase:")
-        print(data)
+        # Verify JSON serialization
+        json.dumps(data)
 
-        supabase.table("monthly_financials").upsert(
+        # Upload to Supabase
+        supabase.table(
+            "monthly_financials"
+        ).upsert(
             data
         ).execute()
-
-    try:
-        response = supabase.table("monthly_financials").upsert({
-            ...
-        }).execute()
-
-        print(response)
-
-    except Exception as e:
-        print("SUPABASE ERROR:")
-        print(e)
-        raise
-
 
     conn.commit()
     conn.close()
