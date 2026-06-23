@@ -346,6 +346,57 @@ with col2:
         f"${under_budget:,.2f}"
     )
 
+
+# --------------------------------------------------
+# BUDGET MANAGER
+# --------------------------------------------------
+
+st.subheader("Budget Manager")
+
+edited_budget = budget_df.copy()
+
+edited_budget = st.data_editor(
+    edited_budget,
+    column_config={
+        "category": st.column_config.TextColumn(
+            "Category"
+        ),
+        "budget_amount": st.column_config.NumberColumn(
+            "Monthly Budget",
+            format="$%.2f"
+        )
+    },
+    hide_index=True,
+    use_container_width=True
+)
+
+if st.button("💾 Save Budget Changes"):
+
+    try:
+
+        for _, row in edited_budget.iterrows():
+
+            supabase.table(
+                "budgets"
+            ).upsert({
+                "category": row["category"],
+                "budget_amount": float(
+                    row["budget_amount"]
+                )
+            }).execute()
+
+        st.success(
+            "Budget updated successfully!"
+        )
+
+        st.rerun()
+
+    except Exception as e:
+
+        st.error(
+            f"Error updating budget: {e}"
+        )
+
 # --------------------------------------------------
 # RECOMMENDATIONS
 # --------------------------------------------------
