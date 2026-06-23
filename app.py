@@ -5,6 +5,7 @@ import os
 
 from scripts.import_functions import import_quickbooks
 from sklearn.linear_model import LinearRegression
+from scripts.supabase_client import supabase
 
 # Create database if it doesn't exist
 
@@ -121,6 +122,104 @@ if len(df) == 0:
     st.warning("No financial data found.")
 
     st.stop()
+
+# --------------------------------------------------
+# BUDGET VS ACTUAL
+# --------------------------------------------------
+
+st.header("💰 Budget vs Actual")
+
+budget_response = (
+    supabase
+    .table("budgets")
+    .select("*")
+    .execute()
+)
+
+budget_df = pd.DataFrame(
+    budget_response.data
+)
+
+latest = df.iloc[-1]
+
+comparison = pd.DataFrame({
+    "Category": [
+        "Payroll",
+        "Marketing",
+        "Software",
+        "Rent"
+    ],
+    "Budget": [
+        budget_df.loc[
+            budget_df["category"] == "Payroll",
+            "budget_amount"
+        ].iloc[0],
+
+        budget_df.loc[
+            budget_df["category"] == "Marketing",
+            "budget_amount"
+        ].iloc[0],
+
+        budget_df.loc[
+            budget_df["category"] == "Software",
+            "budget_amount"
+        ].iloc[0],
+
+        budget_df.loc[
+            budget_df["category"] == "Rent",
+            "budget_amount"
+        ].iloc[0]
+    ],
+
+    "Actual": [
+        latest["payroll"],
+        latest["marketing"],
+        latest["software"],
+        latest["rent"]
+    ]
+})
+
+comparison["Variance"] = (
+    comparison["Actual"]
+    - comparison["Budget"]
+)
+
+comparison["Variance %"] = (
+    comparison["Variance"]
+    / comparison["Budget"]
+    * 100
+)
+
+st.dataframe(
+    comparison,
+    use_container_width=True
+)
+
+st.subheader("Budget Summary")
+
+over_budget = comparison[
+    comparison["Variance"] > 0
+]["Variance"].sum()
+
+under_budget = abs(
+    comparison[
+        comparison["Variance"] < 0
+    ]["Variance"].sum()
+)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(
+        "Over Budget",
+        f"${over_budget:,.2f}"
+    )
+
+with col2:
+    st.metric(
+        "Under Budget",
+        f"${under_budget:,.2f}"
+    )
 
 # --------------------------------------------------
 # LATEST MONTH KPIs
