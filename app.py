@@ -9,6 +9,14 @@ from scripts.supabase_client import supabase
 
 # Create database if it doesn't exist
 
+st.markdown("""
+<style>
+[data-testid="stMetricValue"] {
+    color: #2596be;
+}
+</style>
+""", unsafe_allow_html=True)
+
 conn = sqlite3.connect("database.db")
 cursor = conn.cursor()
 
@@ -340,8 +348,16 @@ expense_df = pd.DataFrame({
     ]
 })
 
-st.bar_chart(
-    expense_df.set_index("Category")
+fig = px.bar(
+    your_dataframe,
+    x="Category",
+    y="Amount",
+    color_discrete_sequence=["#2596be"]
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
 )
 
 # --------------------------------------------------
@@ -449,7 +465,35 @@ st.subheader(
     "Historical vs Forecasted Revenue"
 )
 
-st.line_chart(chart_df)
+import plotly.express as px
+
+fig = px.line(
+    chart_df,
+    y=[
+        "Historical Revenue",
+        "Growth Forecast",
+        "Regression Forecast"
+    ]
+)
+
+fig.update_traces(
+    line=dict(width=4)
+)
+
+fig.data[0].line.color = "#2596be"   # Historical Revenue
+fig.data[1].line.color = "#7b2cbf"   # Growth Forecast
+fig.data[2].line.color = "#c77dff"   # Regression Forecast
+
+fig.update_layout(
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+    legend_title_text=""
+)
+
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
 
 # --------------------------------------------------
 # FORECAST TABLE
