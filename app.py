@@ -490,9 +490,9 @@ fig.update_traces(
     line=dict(width=4)
 )
 
-fig.data[0].line.color = GLG_PURPLE
-fig.data[1].line.color = GLG_PURPLE
-fig.data[2].line.color = GLG_PURPLE
+fig.data[0].line.color = "#800080"
+fig.data[1].line.color = "#9932CC"
+fig.data[2].line.color = "#BA55D3"
 
 fig.update_layout(
     plot_bgcolor="white",
