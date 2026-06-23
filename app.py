@@ -401,26 +401,31 @@ if st.button("💾 Save Budget Changes"):
 # BUDGET HEALTH SCORE
 # --------------------------------------------------
 
-total_budget = comparison["Budget"].sum()
-total_actual = comparison["Actual"].sum()
-
-budget_health = max(
-    0,
-    100 - abs(
-        (total_actual - total_budget)
-        / total_budget * 100
-    )
-)
-
 st.subheader("Budget Health Score")
 
 st.progress(
     budget_health / 100
 )
 
-st.metric(
-    "Budget Health",
-    f"{budget_health:.1f}/100"
+st.markdown(
+    f"""
+    <div style="text-align:center;">
+        <span style="
+            font-size:48px;
+            font-weight:bold;
+            color:#800080;
+        ">
+            {budget_health:.0f}
+        </span>
+        <span style="
+            font-size:28px;
+            color:#800080;
+        ">
+            /100
+        </span>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
 # --------------------------------------------------
