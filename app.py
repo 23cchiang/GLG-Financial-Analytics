@@ -3,7 +3,6 @@ import pandas as pd
 import sqlite3
 import os
 import plotly.express as px
-import plotly.express as px
 
 from scripts.import_functions import import_quickbooks
 from sklearn.linear_model import LinearRegression
@@ -14,7 +13,7 @@ GLG_PURPLE = "#800080"
 
 st.markdown("""
 <style>
-[data-testid="stMetricValue"] {
+h1, h2, h3 {
     color: #800080;
 }
 </style>
@@ -323,15 +322,24 @@ col4.metric(
 # HISTORICAL REVENUE
 # --------------------------------------------------
 
-st.divider()
-
 st.header("Revenue Trend")
 
-revenue_chart = df[["month", "revenue"]].copy()
+fig = px.line(
+    df,
+    x="month",
+    y="revenue",
+    title="Revenue Trend"
+)
 
-revenue_chart = revenue_chart.set_index("month")
+fig.update_traces(
+    line_color="#800080",
+    line_width=4
+)
 
-st.line_chart(revenue_chart)
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
 
 # --------------------------------------------------
 # EXPENSE BREAKDOWN
