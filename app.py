@@ -184,14 +184,38 @@ comparison["Variance"] = (
     - comparison["Budget"]
 )
 
+comparison["Status"] = comparison["Variance"].apply(
+    lambda x: "🔴 Over Budget"
+    if x > 0
+    else "🟢 Under Budget"
+)
+
 comparison["Variance %"] = (
     comparison["Variance"]
     / comparison["Budget"]
     * 100
 )
 
+styled_comparison = (
+    comparison.style
+    .format({
+        "Budget": "${:,.2f}",
+        "Actual": "${:,.2f}",
+        "Variance": "${:,.2f}",
+        "Variance %": "{:.1f}%"
+    })
+    .map(
+        lambda v: (
+            "color: red; font-weight: bold"
+            if v > 0
+            else "color: green; font-weight: bold"
+        ),
+        subset=["Variance"]
+    )
+)
+
 st.dataframe(
-    comparison,
+    styled_comparison,
     use_container_width=True
 )
 
@@ -211,13 +235,14 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.metric(
-        "Over Budget",
+        "🔴 Over Budget",
         f"${over_budget:,.2f}"
     )
 
+
 with col2:
     st.metric(
-        "Under Budget",
+        "🟢 Under Budget",
         f"${under_budget:,.2f}"
     )
 
