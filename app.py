@@ -7,17 +7,42 @@ import plotly.express as px
 from scripts.import_functions import import_quickbooks
 from sklearn.linear_model import LinearRegression
 from scripts.supabase_client import supabase
+
+# --------------------------------------------------
+# CONSTANTS
+# --------------------------------------------------
+
 GLG_PURPLE = "#800080"
 
-# Create database if it doesn't exist
+# --------------------------------------------------
+# PAGE CONFIG
+# --------------------------------------------------
 
-st.markdown("""
+st.set_page_config(
+    page_title="GLG Financial Analytics Dashboard",
+    layout="wide"
+)
+
+# --------------------------------------------------
+# STYLING
+# --------------------------------------------------
+
+st.markdown(f"""
 <style>
-h1, h2, h3 {
-    color: #800080;
-}
+h1, h2, h3 {{
+    color: {GLG_PURPLE};
+}}
+
+[data-testid="stMetricValue"] {{
+    color: {GLG_PURPLE};
+    font-weight: bold;
+}}
 </style>
 """, unsafe_allow_html=True)
+
+# --------------------------------------------------
+# DATABASE SETUP
+# --------------------------------------------------
 
 conn = sqlite3.connect("database.db")
 cursor = conn.cursor()
@@ -45,29 +70,17 @@ CREATE TABLE IF NOT EXISTS forecasts (
 )
 """)
 
-st.markdown("""
-<style>
-h1, h2, h3 {
-    color: #800080;
-}
-</style>
-""", unsafe_allow_html=True)
-
 conn.commit()
 conn.close()
-# --------------------------------------------------
-# PAGE CONFIG
-# --------------------------------------------------
 
-st.set_page_config(
-    page_title="GLG Financial Analytics Dashboard",
-    layout="wide"
-)
+# --------------------------------------------------
+# TITLE
+# --------------------------------------------------
 
 st.title("GLG Financial Analytics Dashboard")
 
 # --------------------------------------------------
-# QUICKBOOKS UPLOAD
+# QUICKBOOKS IMPORT
 # --------------------------------------------------
 
 st.header("Upload QuickBooks Report")
@@ -97,7 +110,6 @@ if uploaded_file is not None:
 
         st.rerun()
 
-
 # --------------------------------------------------
 # PASSWORD PROTECTION
 # --------------------------------------------------
@@ -115,7 +127,7 @@ if password != st.secrets["dashboard_password"]:
     st.stop()
 
 # --------------------------------------------------
-# DATABASE
+# LOAD DATA
 # --------------------------------------------------
 
 conn = sqlite3.connect("database.db")
@@ -131,10 +143,6 @@ df = pd.read_sql_query(
 
 conn.close()
 
-# --------------------------------------------------
-# CHECK FOR DATA
-# --------------------------------------------------
-
 if len(df) == 0:
 
     st.warning("No financial data found.")
@@ -142,27 +150,46 @@ if len(df) == 0:
     st.stop()
 
 # --------------------------------------------------
-# BUDGET VS ACTUAL
+# CURRENT MONTH DATA
 # --------------------------------------------------
 
-st.header("💰 Budget vs Actual")
-
-budget_response = (
-    supabase
-    .table("budgets")
-    .select("*")
-    .execute()
-)
-
-budget_df = pd.DataFrame(
-    budget_response.data
-)
-
 latest = df.iloc[-1]
+
+revenue = float(latest["revenue"])
+
+expenses = (
+    float(latest["payroll"])
+    + float(latest["supplies"])
+    + float(latest["rent"])
+    + float(latest["software"])
+    + float(latest["marketing"])
+)
+
+profit = float(latest["profit"])
+
+profit_margin = (
+    (profit / revenue) * 100
+    if revenue > 0
+    else 0
+)
+
+payroll_pct = (
+    latest["payroll"] / revenue * 100
+    if revenue != 0
+    else 0
+)
+
+supplies_pct = (
+    latest["supplies"] / revenue * 100
+    if revenue != 0
+    else 0
+)
 
 # --------------------------------------------------
 # EXECUTIVE KPI DASHBOARD
 # --------------------------------------------------
+
+st.header("Executive Summary")
 
 col1, col2 = st.columns(2)
 
@@ -194,6 +221,22 @@ with col4:
 
 st.divider()
 
+# --------------------------------------------------
+# BUDGET VS ACTUAL
+# --------------------------------------------------
+
+st.header("💰 Budget vs Actual")
+
+budget_response = (
+    supabase
+    .table("budgets")
+    .select("*")
+    .execute()
+)
+
+budget_df = pd.DataFrame(
+    budget_response.data
+)
 
 comparison = pd.DataFrame({
     "Category": [
@@ -202,6 +245,7 @@ comparison = pd.DataFrame({
         "Software",
         "Rent"
     ],
+
     "Budget": [
         budget_df.loc[
             budget_df["category"] == "Payroll",
@@ -238,7 +282,8 @@ comparison["Variance"] = (
 )
 
 comparison["Status"] = comparison["Variance"].apply(
-    lambda x: "🔴 Over Budget"
+    lambda x:
+    "🔴 Over Budget"
     if x > 0
     else "🟢 Under Budget"
 )
@@ -261,7 +306,7 @@ styled_comparison = (
         lambda v:
         "color: red; font-weight: bold"
         if v > 0
-        else "color: #800080; font-weight: bold",
+        else "color: green; font-weight: bold",
         subset=["Variance"]
     )
 )
@@ -270,6 +315,10 @@ st.dataframe(
     styled_comparison,
     use_container_width=True
 )
+
+# --------------------------------------------------
+# BUDGET SUMMARY
+# --------------------------------------------------
 
 st.subheader("Budget Summary")
 
@@ -282,6 +331,24 @@ under_budget = abs(
         comparison["Variance"] < 0
     ]["Variance"].sum()
 )
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(
+        "🔴 Over Budget",
+        f"${over_budget:,.2f}"
+    )
+
+with col2:
+    st.metric(
+        "🟢 Under Budget",
+        f"${under_budget:,.2f}"
+    )
+
+# --------------------------------------------------
+# RECOMMENDATIONS
+# --------------------------------------------------
 
 st.subheader("Recommendations")
 
@@ -301,50 +368,8 @@ for _, row in comparison.iterrows():
             f"${abs(row['Variance']):,.2f}"
         )
 
-col1, col2 = st.columns(2)
-
-with col1:
-    st.metric(
-        "🔴 Over Budget",
-        f"${over_budget:,.2f}"
-    )
-
-
-with col2:
-    st.metric(
-        "🟢 Under Budget",
-        f"${under_budget:,.2f}"
-    )
-
 # --------------------------------------------------
-# LATEST MONTH KPIs
-# --------------------------------------------------
-
-latest = df.iloc[-1]
-
-revenue = latest["revenue"]
-profit = latest["profit"]
-
-net_margin = (
-    profit / revenue * 100
-    if revenue != 0
-    else 0
-)
-
-payroll_pct = (
-    latest["payroll"] / revenue * 100
-    if revenue != 0
-    else 0
-)
-
-supplies_pct = (
-    latest["supplies"] / revenue * 100
-    if revenue != 0
-    else 0
-)
-
-# --------------------------------------------------
-# KPI DASHBOARD
+# OPERATIONAL KPIs
 # --------------------------------------------------
 
 st.header("Operational KPIs")
@@ -358,7 +383,7 @@ col1.metric(
 
 col2.metric(
     "Net Margin",
-    f"{net_margin:.2f}%"
+    f"{profit_margin:.2f}%"
 )
 
 col3.metric(
@@ -372,7 +397,7 @@ col4.metric(
 )
 
 # --------------------------------------------------
-# HISTORICAL REVENUE
+# REVENUE TREND
 # --------------------------------------------------
 
 st.header("Revenue Trend")
@@ -385,7 +410,7 @@ fig = px.line(
 )
 
 fig.update_traces(
-    line_color="#800080",
+    line_color=GLG_PURPLE,
     line_width=4
 )
 
@@ -423,7 +448,7 @@ fig = px.bar(
     expense_df,
     x="Category",
     y="Amount",
-    color_discrete_sequence=["#800080"],
+    color_discrete_sequence=[GLG_PURPLE],
     text="Amount"
 )
 
@@ -435,9 +460,7 @@ fig.update_traces(
 st.plotly_chart(
     fig,
     use_container_width=True
-)
-
-# --------------------------------------------------
+)# --------------------------------------------------
 # GROWTH FORECAST
 # --------------------------------------------------
 
@@ -447,13 +470,19 @@ growth_rates = []
 
 for i in range(1, len(revenues)):
 
-    growth = (
-        revenues[i] - revenues[i - 1]
-    ) / revenues[i - 1]
+    if revenues[i - 1] != 0:
 
-    growth_rates.append(growth)
+        growth = (
+            revenues[i] - revenues[i - 1]
+        ) / revenues[i - 1]
 
-avg_growth = sum(growth_rates) / len(growth_rates)
+        growth_rates.append(growth)
+
+avg_growth = (
+    sum(growth_rates) / len(growth_rates)
+    if len(growth_rates) > 0
+    else 0
+)
 
 growth_forecast = []
 
@@ -476,7 +505,6 @@ reg_df = df.copy()
 reg_df["month_num"] = range(len(reg_df))
 
 X = reg_df[["month_num"]]
-
 y = reg_df["revenue"]
 
 model = LinearRegression()
@@ -509,18 +537,20 @@ st.header("Forecast Comparison")
 
 col1, col2 = st.columns(2)
 
-col1.metric(
-    "Growth Model",
-    f"${growth_forecast[-1]:,.0f}"
-)
+with col1:
+    st.metric(
+        "Growth Model",
+        f"${growth_forecast[-1]:,.0f}"
+    )
 
-col2.metric(
-    "Regression Model",
-    f"${regression_forecast[-1]:,.0f}"
-)
+with col2:
+    st.metric(
+        "Regression Model",
+        f"${regression_forecast[-1]:,.0f}"
+    )
 
 # --------------------------------------------------
-# COMBINED FORECAST CHART
+# FORECAST CHART
 # --------------------------------------------------
 
 historical = df["revenue"].tolist()
@@ -542,8 +572,6 @@ st.subheader(
     "Historical vs Forecasted Revenue"
 )
 
-import plotly.express as px
-
 fig = px.line(
     chart_df,
     y=[
@@ -564,7 +592,8 @@ fig.data[2].line.color = "#BA55D3"
 fig.update_layout(
     plot_bgcolor="white",
     paper_bgcolor="white",
-    legend_title_text=""
+    legend_title_text="",
+    hovermode="x unified"
 )
 
 st.plotly_chart(
@@ -604,6 +633,7 @@ forecast_display["Regression Forecast"] = (
     .map(lambda x: f"${x:,.0f}")
 )
 
+st.subheader("Forecast Details")
 
 st.dataframe(
     forecast_display,
@@ -618,21 +648,29 @@ st.divider()
 
 st.header("Import Information")
 
-st.write(
-    f"Source File: {latest['source_file']}"
-)
+col1, col2 = st.columns(2)
 
-st.write(
-    f"Date Imported: {latest['date_imported']}"
-)
+with col1:
+    st.info(
+        f"📄 Source File: {latest['source_file']}"
+    )
+
+with col2:
+    st.info(
+        f"📅 Imported: {latest['date_imported']}"
+    )
 
 # --------------------------------------------------
 # HISTORICAL DATA
 # --------------------------------------------------
 
+st.divider()
+
 with st.expander(
-    "View Historical Financial Data"
+    "View Historical Financial Data",
+    expanded=False
 ):
+
     display_df = df.copy()
 
     money_columns = [
@@ -646,6 +684,7 @@ with st.expander(
     ]
 
     for col in money_columns:
+
         display_df[col] = display_df[col].map(
             lambda x: f"${x:,.2f}"
         )
@@ -654,3 +693,13 @@ with st.expander(
         display_df,
         use_container_width=True
     )
+
+# --------------------------------------------------
+# FOOTER
+# --------------------------------------------------
+
+st.divider()
+
+st.caption(
+    "GLG Financial Analytics Dashboard • Powered by QuickBooks, SQLite, Supabase, and Streamlit"
+)
