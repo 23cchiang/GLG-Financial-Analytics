@@ -78,7 +78,7 @@ streamlit run app.py
 The dashboard will be available locally at:
 
 ```text
-(https://glg-financial.streamlit.app/)
+https://glg-financial.streamlit.app/
 ```
 
 ## Current Functionality
