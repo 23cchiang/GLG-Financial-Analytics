@@ -174,11 +174,26 @@ def import_quickbooks(file_path):
         json.dumps(data)
 
         # Upload to Supabase
-        supabase.table(
-            "monthly_financials"
-        ).upsert(
-            data
-        ).execute()
+        try:
+
+            response = (
+                supabase
+                .table("monthly_financials")
+                .upsert(data)
+                .execute()
+            )
+
+            print(response)
+
+        except Exception as e:
+
+            print("=" * 60)
+            print("SUPABASE ERROR")
+            print(type(e))
+            print(e)
+            print("=" * 60)
+
+            raise
 
     conn.commit()
     conn.close()
