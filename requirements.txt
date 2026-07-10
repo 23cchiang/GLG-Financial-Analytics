@@ -1,7 +1,8 @@
-streamlit
-pandas
-numpy
-scikit-learn
-openpyxl
-supabase
-plotly
+streamlit==1.47.0
+pandas==2.3.1
+numpy==2.3.1
+plotly==6.2.0
+supabase==2.16.0
+openpyxl==3.1.5
+scikit-learn==1.7.0
+httpx==0.28.1
